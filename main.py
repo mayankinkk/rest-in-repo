@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from graveyard.classify import DEAD_THRESHOLD_DAYS, classify
-from graveyard.eulogy import DEFAULT_MODEL, generate_eulogy
+from graveyard.eulogy import DEFAULT_MODEL, generate_eulogy, generate_resurrection_plan
 from graveyard.render import render
 from graveyard.scan import scan_all
 
@@ -46,6 +46,10 @@ def main() -> int:
         "--max-depth", type=int, default=3,
         help="How deep to search for repos (default: 3)",
     )
+    parser.add_argument(
+        "--resurrection", action="store_true",
+        help="Also generate a resurrection plan for each dead repo",
+    )
 
     args = parser.parse_args()
 
@@ -81,16 +85,24 @@ def main() -> int:
     for i, (facts, cls) in enumerate(dead, 1):
         print(f"  [{i}/{len(dead)}] Burying {facts.name} — {cls.cause_label} ...", end=" ", flush=True)
         if args.no_ollama:
-            from graveyard.eulogy import _fallback_eulogy
+            from graveyard.eulogy import _fallback_eulogy, _fallback_resurrection_plan
             eulogy = _fallback_eulogy(facts, cls.cause_label)
+            plan = _fallback_resurrection_plan(facts, cls.cause_label) if args.resurrection else None
             note = "offline"
         else:
             eulogy, note, _ = generate_eulogy(
                 facts, cls.cause_label, model=args.model, tone=args.tone,
             )
+            plan = None
+            if args.resurrection:
+                plan, plan_note, _ = generate_resurrection_plan(
+                    facts, cls.cause_label, model=args.model,
+                )
+                if plan_note:
+                    note = f"{note}, {plan_note}" if note else plan_note
         suffix = f" ({note})" if note else ""
         print(f"done{suffix}")
-        results.append((facts, cls, eulogy))
+        results.append((facts, cls, eulogy, plan))
 
     html = render(results, alive, anonymize=args.anonymize)
     args.output.write_text(html, encoding="utf-8")

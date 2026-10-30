@@ -180,3 +180,78 @@ def _fallback_eulogy(facts: RepoFacts, cause_label: str) -> str:
         f"before succumbing to {cause_label.lower()}. Its last words were: \"{last}\". "
         f"It leaves behind {facts.todo_count} unfinished TODOs and a README it may or may not have deserved."
     )
+
+
+def _build_resurrection_prompt(facts: RepoFacts, cause_label: str) -> str:
+    last_words = facts.last_commits[0] if facts.last_commits else "unknown"
+    langs = ", ".join(facts.languages.keys()) or "unknown"
+    return f"""You are writing a short, concrete resurrection plan for a dead side project.
+
+STRICT RULES:
+- Use ONLY the facts below. Do not invent numbers, dates, commit counts, or details.
+- Output ONLY the plan. No preamble, no "Here is...".
+- Maximum 3 short numbered steps (1-2 sentences each).
+- Be practical and specific to this project's cause of death.
+
+FACTS:
+- Name: {facts.name}
+- Cause of death: {cause_label}
+- Lived: {facts.lifespan_days} days
+- Commits: {facts.commit_count}
+- Languages: {langs}
+- Files: {facts.file_count}
+- Leftover TODO/FIXME: {facts.todo_count}
+- Had README: {facts.has_readme}
+- Had tests: {facts.has_tests}
+- Last words (final commit message): "{last_words}"
+
+Resurrection plan (output only the plan):"""
+
+
+def _fallback_resurrection_plan(facts: RepoFacts, cause_label: str) -> str:
+    steps = []
+    if not facts.has_readme:
+        steps.append("Write a README that says what it does and how to run it.")
+    else:
+        steps.append("Skim the README and cut any feature that was never actually built.")
+    if not facts.has_tests:
+        steps.append("Add one smoke test so future changes don't break it silently.")
+    else:
+        steps.append("Run the existing tests and fix whatever is already failing.")
+    if facts.todo_count > 0:
+        steps.append(
+            f"Resolve the {facts.todo_count} leftover TODO/FIXME markers, "
+            "deleting the ones you'll never do."
+        )
+    else:
+        steps.append("Ship a tiny v0.1 tag and stop gold-plating it.")
+    return "\n".join(f"{i}. {s}" for i, s in enumerate(steps, 1))
+
+
+def generate_resurrection_plan(
+    facts: RepoFacts,
+    cause_label: str,
+    model: str = DEFAULT_MODEL,
+    max_retries: int = 2,
+) -> tuple[str, str, bool]:
+    """Return (plan, validation_note, used_fallback)."""
+    prompt = _build_resurrection_prompt(facts, cause_label)
+
+    for attempt in range(max_retries + 1):
+        response = _call_ollama(prompt, model)
+        if not response:
+            break
+
+        plan = _strip_preamble(response).strip('"')
+        if len(plan) > 600:
+            plan = plan[:597] + "..."
+
+        ok, bad = _validate_eulogy(plan, facts)
+        if ok:
+            return plan, "", False
+        if attempt < max_retries:
+            prompt = prompt + f"\n\nYour previous answer invented these numbers: {', '.join(bad)}. Regenerate using only the given facts."
+            continue
+        return plan, f"contained unverified numbers: {', '.join(bad)}", False
+
+    return _fallback_resurrection_plan(facts, cause_label), "Ollama unavailable — used offline fallback.", True

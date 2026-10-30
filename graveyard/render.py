@@ -73,11 +73,11 @@ def _size_human(n: int) -> str:
     return f"{n / (1024 * 1024):.1f} MB"
 
 
-def _compute_stats(dead: list[tuple[RepoFacts, Classification, str]]) -> dict:
+def _compute_stats(dead: list) -> dict:
     if not dead:
         return {}
-    causes = [c.cause for _, c, _ in dead]
-    lifespans = [f.lifespan_days for f, _, _ in dead]
+    causes = [c.cause for _, c, *_ in dead]
+    lifespans = [f.lifespan_days for f, *_ in dead]
     longest = max(dead, key=lambda t: t[0].lifespan_days)
     closest = None
     for item in dead:
@@ -105,7 +105,7 @@ def _compute_stats(dead: list[tuple[RepoFacts, Classification, str]]) -> dict:
     }
 
 
-def _tombstone(idx: int, facts: RepoFacts, cls: Classification, eulogy: str, anonymize: bool) -> str:
+def _tombstone(idx: int, facts: RepoFacts, cls: Classification, eulogy: str, plan: str | None, anonymize: bool) -> str:
     display_name = f"REPO-{idx:03d}" if anonymize else facts.name
     last_words = facts.last_commits[0] if facts.last_commits else "…"
     display_last = "(hidden)" if anonymize else last_words
@@ -120,6 +120,14 @@ def _tombstone(idx: int, facts: RepoFacts, cls: Classification, eulogy: str, ano
             f"<div class='diff-line'>{_esc(l)}</div>" for l in facts.last_diff_stat.splitlines()
         )
         diff_html = f"<div class='seance-panel'><div class='seance-title'>🔦 The Séance</div><p class='seance-sub'>Here's what you were doing when you stopped:</p><pre class='diff'>{diff_lines}</pre></div>"
+
+    plan_html = ""
+    if plan:
+        steps_html = "".join(
+            f"<div class='plan-step'>{_esc(line.strip())}</div>"
+            for line in plan.splitlines() if line.strip()
+        ) or f"<div class='plan-step'>{_esc(plan)}</div>"
+        plan_html = f"<div class='resurrect-panel'><div class='seance-title'>🌱 Resurrection Plan</div><div class='plan-body'>{steps_html}</div></div>"
 
     buckets = facts.activity_buckets(40)
     peak = max(buckets) if buckets else 0
@@ -190,7 +198,9 @@ def _tombstone(idx: int, facts: RepoFacts, cls: Classification, eulogy: str, ano
       </div>
       <div class="cert" data-field="cert">📜 {_esc(cls.death_certificate)}</div>
       <button class="seance-btn" type="button">🔦 Hold a Séance</button>
+      {f'<button class="resurrect-btn" type="button">🌱 Resurrect</button>' if plan else ''}
       <button class="export-btn" type="button">📷 Export PNG</button>
+      {plan_html}
       {diff_html}
     </article>
     """
@@ -429,8 +439,24 @@ header { text-align: center; margin-bottom: 50px; }
 }
 .export-btn:hover { border-color: var(--gold); color: var(--gold); }
 
+.resurrect-btn {
+  width: 100%; padding: 8px; margin-top: 8px; background: transparent;
+  border: 1px solid #4ade80; color: #4ade80;
+  border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 0.78rem;
+  transition: all 0.2s;
+}
+.resurrect-btn:hover { background: rgba(74, 222, 128, 0.12); box-shadow: 0 0 15px rgba(74, 222, 128, 0.2); }
+
 .seance-panel { display: none; margin-top: 14px; }
 .seance-panel.open { display: block; animation: fadeIn 0.4s ease; }
+.resurrect-panel { display: none; margin-top: 14px; }
+.resurrect-panel.open { display: block; animation: fadeIn 0.4s ease; }
+.plan-body {
+  background: rgba(74, 222, 128, 0.05); border: 1px dashed rgba(74, 222, 128, 0.25);
+  border-radius: 8px; padding: 12px;
+}
+.plan-step { color: var(--text); font-size: 0.82rem; line-height: 1.5; margin-bottom: 8px; }
+.plan-step:last-child { margin-bottom: 0; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 .seance-title { color: var(--gold); font-size: 0.9rem; margin-bottom: 6px; }
 .seance-sub { color: var(--dim); font-size: 0.75rem; margin-bottom: 10px; }
@@ -481,6 +507,18 @@ document.querySelectorAll('.seance-btn').forEach(btn => {
     if (panel) {
       panel.classList.toggle('open');
       btn.textContent = panel.classList.contains('open') ? '🕯️ Close the Séance' : '🔦 Hold a Séance';
+    }
+  });
+});
+
+document.querySelectorAll('.resurrect-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const tomb = btn.closest('.tombstone');
+    const panel = tomb.querySelector('.resurrect-panel');
+    if (panel) {
+      panel.classList.toggle('open');
+      btn.textContent = panel.classList.contains('open') ? '⚰️ Bury Again' : '🌱 Resurrect';
     }
   });
 });
@@ -645,7 +683,7 @@ if (anonToggle) {
 
 
 def render(
-    dead: list[tuple[RepoFacts, Classification, str]],
+    dead: list[tuple[RepoFacts, Classification, str, str | None]],
     alive: list[RepoFacts],
     anonymize: bool = False,
 ) -> str:
@@ -704,7 +742,7 @@ def render(
         {dist_html}"""
 
     tombstones = "".join(
-        _tombstone(i, f, c, e, anonymize) for i, (f, c, e) in enumerate(dead, 1)
+        _tombstone(i, f, c, e, p, anonymize) for i, (f, c, e, p) in enumerate(dead, 1)
     )
 
     alive_html = ""
@@ -729,7 +767,7 @@ def render(
 
     filter_html = ""
     if dead:
-        present_causes = list(dict.fromkeys(c.cause for _, c, _ in dead))
+        present_causes = list(dict.fromkeys(c.cause for _, c, *_ in dead))
         chips = "<button class='chip chip-active' data-filter='all'>All</button>"
         for cause in present_causes:
             label = cause_labels.get(cause, cause)
