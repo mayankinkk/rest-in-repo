@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+graveyard.html
+graveyard_demo.html
+*.png
+.DS_Store
