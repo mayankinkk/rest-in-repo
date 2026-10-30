@@ -17,6 +17,8 @@ CAUSES = {
     "fix_loop": "Fix-Loop Death",
     "almost_shipped": "Almost Shipped",
     "scope_creep": "Scope-Creep Death",
+    "weekend_hack": "Weekend Hack",
+    "hackathon_orphan": "Hackathon Orphan",
     "abandoned": "General Abandonment",
 }
 
@@ -27,8 +29,12 @@ DEATH_CERT_NOTES = {
     "fix_loop": "Cause: Fix-Loop. Died mid-stack-trace.",
     "almost_shipped": "Cause: Almost Shipped. So close you could taste the deploy.",
     "scope_creep": "Cause: Scope Creep. Eaten by its own ambition.",
+    "weekend_hack": "Cause: Weekend Hack. Born on a Friday, gone by Monday.",
+    "hackathon_orphan": "Cause: Hackathon Orphan. Built in a blaze, abandoned at the deadline.",
     "abandoned": "Cause: General Abandonment. Quietly stopped being interesting.",
 }
+
+WEEKEND_DAYS = {4, 5, 6}
 
 
 @dataclass
@@ -47,6 +53,10 @@ class Classification:
             "reasons": self.reasons,
             "death_certificate": self.death_certificate,
         }
+
+
+def _is_weekend(d: datetime) -> bool:
+    return d.weekday() in WEEKEND_DAYS
 
 
 def _commit_cadence(dates: list[datetime]) -> tuple[float, float]:
@@ -109,6 +119,26 @@ def classify(facts: RepoFacts, dead_threshold: int = DEAD_THRESHOLD_DAYS) -> Cla
             reasons=[f"Last commit {days_dead} days ago."],
             death_certificate="",
         )
+
+    if (
+        facts.lifespan_days <= 3
+        and facts.commit_count >= 3
+        and facts.first_commit
+        and _is_weekend(facts.first_commit)
+    ):
+        day = facts.first_commit.strftime("%A")
+        reasons.append(
+            f"Born on a {day}, {facts.commit_count} commits over {facts.lifespan_days} days, then never again."
+        )
+        return _result("weekend_hack", reasons, "medium")
+
+    if facts.lifespan_days <= 7 and facts.commit_count >= 8:
+        rate = facts.commit_count / max(facts.lifespan_days, 1)
+        if rate >= 3:
+            reasons.append(
+                f"{facts.commit_count} commits in {facts.lifespan_days} days (~{rate:.0f}/day), then nothing for {days_dead} days."
+            )
+            return _result("hackathon_orphan", reasons, "medium")
 
     if facts.commit_count < 5 and facts.lifespan_days < 14:
         reasons.append(f"Only {facts.commit_count} commits over {facts.lifespan_days} days.")

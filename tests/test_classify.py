@@ -89,6 +89,37 @@ class ClassifierTests(unittest.TestCase):
         result = self._classify("scope")
         self.assertEqual(result.cause, "scope_creep")
 
+    def test_weekend_hack(self):
+        b = RepoBuilder(self.root, "weekend")
+        sat = datetime(2024, 1, 6, 9, 0, 0)  # Saturday
+        spaced_commits(b, sat, 4, step_days=0.5)
+        result = self._classify("weekend")
+        self.assertEqual(result.cause, "weekend_hack")
+        self.assertEqual(result.confidence, "medium")
+
+    def test_weekend_hack_requires_weekend_start(self):
+        b = RepoBuilder(self.root, "weekday-burst")
+        mon = datetime(2024, 1, 1, 9, 0, 0)  # Monday
+        spaced_commits(b, mon, 4, step_days=0.5)
+        result = self._classify("weekday-burst")
+        self.assertNotEqual(result.cause, "weekend_hack")
+        self.assertEqual(result.cause, "born_dead")
+
+    def test_hackathon_orphan(self):
+        b = RepoBuilder(self.root, "hackathon")
+        mon = datetime(2024, 3, 4, 9, 0, 0)
+        spaced_commits(b, mon, 12, step_days=0.35)
+        result = self._classify("hackathon")
+        self.assertEqual(result.cause, "hackathon_orphan")
+        self.assertEqual(result.confidence, "medium")
+
+    def test_hackathon_orphan_requires_high_rate(self):
+        b = RepoBuilder(self.root, "slow-burst")
+        mon = datetime(2024, 3, 4, 9, 0, 0)
+        spaced_commits(b, mon, 12, step_days=2.0)  # 12 commits over ~22 days, low rate
+        result = self._classify("slow-burst")
+        self.assertNotEqual(result.cause, "hackathon_orphan")
+
     def test_threshold_respects_recency(self):
         b = RepoBuilder(self.root, "recent-baby")
         b.commit(BASE, "init", filename="a.py")

@@ -16,6 +16,8 @@ CAUSE_EMOJI = {
     "fix_loop": "🔧",
     "almost_shipped": "🚀",
     "scope_creep": "🌐",
+    "weekend_hack": "🎉",
+    "hackathon_orphan": "🏆",
     "abandoned": "🪦",
     "alive": "🌿",
 }
@@ -27,6 +29,8 @@ CAUSE_CSS = {
     "fix_loop": "cause-fixloop",
     "almost_shipped": "cause-ship",
     "scope_creep": "cause-scope",
+    "weekend_hack": "cause-weekend",
+    "hackathon_orphan": "cause-hackathon",
     "abandoned": "cause-abandoned",
     "alive": "cause-alive",
 }
@@ -38,6 +42,8 @@ CAUSE_COLORS = {
     "fix_loop": "#fbbf24",
     "almost_shipped": "#34d399",
     "scope_creep": "#fb7185",
+    "weekend_hack": "#38bdf8",
+    "hackathon_orphan": "#a3e635",
     "abandoned": "#9ca3af",
     "alive": "#4ade80",
 }
@@ -49,6 +55,8 @@ EPITAPHS = {
     "fix_loop": "It died mid-stack-trace.",
     "almost_shipped": "It almost shipped.",
     "scope_creep": "Eaten by its own ambition.",
+    "weekend_hack": "It was born on a Saturday and never came back to work.",
+    "hackathon_orphan": "It shipped for the demo, then never again.",
     "abandoned": "It quietly stopped being interesting.",
 }
 
@@ -626,6 +634,8 @@ def render(
         "fix_loop": "Fix-Loop Death",
         "almost_shipped": "Almost Shipped",
         "scope_creep": "Scope-Creep Death",
+        "weekend_hack": "Weekend Hack",
+        "hackathon_orphan": "Hackathon Orphan",
         "abandoned": "General Abandonment",
     }
 
