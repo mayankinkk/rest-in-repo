@@ -31,6 +31,17 @@ CAUSE_CSS = {
     "alive": "cause-alive",
 }
 
+CAUSE_COLORS = {
+    "born_dead": "#a78bfa",
+    "sudden_death": "#f472b6",
+    "slow_fade": "#60a5fa",
+    "fix_loop": "#fbbf24",
+    "almost_shipped": "#34d399",
+    "scope_creep": "#fb7185",
+    "abandoned": "#9ca3af",
+    "alive": "#4ade80",
+}
+
 EPITAPHS = {
     "born_dead": "It never really started.",
     "sudden_death": "It went from everything to nothing.",
@@ -72,10 +83,14 @@ def _compute_stats(dead: list[tuple[RepoFacts, Classification, str]]) -> dict:
         if count > best:
             best = count
             most_common = cause
+    cause_counts: dict[str, int] = {}
+    for cause in causes:
+        cause_counts[cause] = cause_counts.get(cause, 0) + 1
     return {
         "total_buried": len(dead),
         "avg_lifespan": round(sum(lifespans) / len(lifespans)),
         "most_common_cause": most_common,
+        "cause_counts": cause_counts,
         "longest_name": longest[0].name,
         "longest_days": longest[0].lifespan_days,
         "closest_name": closest[0].name if closest else None,
@@ -246,6 +261,22 @@ header { text-align: center; margin-bottom: 50px; }
   text-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
 }
 .stat-label { color: var(--dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; margin-top: 6px; }
+
+.dist-wrap { margin: -20px 0 40px; }
+.dist-bar {
+  display: flex; height: 10px; border-radius: 5px; overflow: hidden;
+  background: var(--bg2); border: 1px solid var(--stone-edge);
+}
+.dist-seg { min-width: 4px; transition: opacity 0.2s; }
+.dist-seg:hover { opacity: 0.75; }
+.dist-legend {
+  display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 10px;
+}
+.dist-legend-item {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--dim); font-size: 0.7rem;
+}
+.dist-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 
 .grid {
   display: grid;
@@ -457,6 +488,25 @@ def render(
                 f' data-field="stat-name" data-real-name="{_esc(stats["closest_name"])}" '
                 f'data-anon-name="{closest_anon}"'
             )
+        dist_segments = ""
+        dist_legend = ""
+        total = stats["total_buried"] or 1
+        for cause, count in stats["cause_counts"].items():
+            color = CAUSE_COLORS.get(cause, "#9ca3af")
+            pct = round((count / total) * 100)
+            dist_segments += (
+                f"<div class='dist-seg' style='flex:{count};background:{color}' "
+                f"title='{_esc(cause_labels.get(cause, cause))}: {count}'></div>"
+            )
+            dist_legend += (
+                f"<span class='dist-legend-item'><span class='dist-dot' style='background:{color}'></span>"
+                f"{_esc(cause_labels.get(cause, cause))} ({count})</span>"
+            )
+        dist_html = f"""
+        <div class="dist-wrap">
+          <div class="dist-bar">{dist_segments}</div>
+          <div class="dist-legend">{dist_legend}</div>
+        </div>"""
         stats_html = f"""
         <div class="stats">
           <div class="stat-card"><div class="stat-num">{stats['total_buried']}</div><div class="stat-label">Projects Buried</div></div>
@@ -464,7 +514,8 @@ def render(
           <div class="stat-card"><div class="stat-num">💀</div><div class="stat-label">Most Common Death</div><div style="color:var(--text);font-size:0.8rem;margin-top:4px;">{_esc(most_common_label)}</div></div>
           <div class="stat-card"><div class="stat-num">{stats['longest_days']}d</div><div class="stat-label">Longest Lived</div><div style="color:var(--text);font-size:0.8rem;margin-top:4px;" data-field="stat-name" data-real-name="{_esc(stats['longest_name'])}" data-anon-name="REPO-???">{_esc(longest_name)}</div></div>
           <div class="stat-card"><div class="stat-num">🚀</div><div class="stat-label">Closest to Shipping</div><div style="color:var(--text);font-size:0.8rem;margin-top:4px;"{closest_attr}>{_esc(f"REPO-???" if anonymize else (stats['closest_name'] or '—'))}</div></div>
-        </div>"""
+        </div>
+        {dist_html}"""
 
     tombstones = "".join(
         _tombstone(i, f, c, e, anonymize) for i, (f, c, e) in enumerate(dead, 1)
