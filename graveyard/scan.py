@@ -20,6 +20,7 @@ class RepoFacts:
     active_days: int = 0
     commit_dates: list[datetime] = field(default_factory=list)
     commit_hours: list[int] = field(default_factory=list)
+    commit_weekdays: list[int] = field(default_factory=list)
     last_commit_local: datetime | None = None
     last_commits: list[str] = field(default_factory=list)
     todo_count: int = 0
@@ -89,6 +90,14 @@ class RepoFacts:
             idx = min(n - 1, max(0, int(frac * n)))
             buckets[idx] += 1
         return buckets
+
+    def commit_heatmap(self) -> list[list[int]]:
+        """7x24 grid of commits by local weekday (rows) x local hour (cols)."""
+        grid = [[0] * 24 for _ in range(7)]
+        for wd, hr in zip(self.commit_weekdays, self.commit_hours):
+            if 0 <= wd < 7 and 0 <= hr < 24:
+                grid[wd][hr] += 1
+        return grid
 
     def to_dict(self) -> dict:
         return {
@@ -370,6 +379,7 @@ def scan_repo(repo_path: Path) -> RepoFacts:
     facts.commit_dates = [d for d in (_parse_date(s) for s in date_lines) if d]
     local_dts = [d for d in (_parse_local(s) for s in date_lines) if d]
     facts.commit_hours = [d.hour for d in local_dts]
+    facts.commit_weekdays = [d.weekday() for d in local_dts]
     if local_dts:
         facts.last_commit_local = local_dts[0]
     if not facts.commit_dates:

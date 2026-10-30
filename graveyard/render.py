@@ -105,6 +105,26 @@ def _compute_stats(dead: list) -> dict:
     }
 
 
+def _heatmap_html(facts: RepoFacts) -> str:
+    grid = facts.commit_heatmap()
+    peak = max((max(row) for row in grid), default=0)
+    if peak == 0:
+        return ""
+    day_labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    rows = ""
+    for wd, row in enumerate(grid):
+        cells = ""
+        for hr, count in enumerate(row):
+            if count > 0:
+                alpha = 0.2 + (count / peak) * 0.8
+                title = f"{day_labels[wd]} {hr:02d}:00 — {count} commit{'s' if count != 1 else ''}"
+                cells += f"<span class='hm-cell hm-hit' style='background:rgba(139,92,246,{alpha:.2f})' title='{_esc(title)}'></span>"
+            else:
+                cells += "<span class='hm-cell' title=''></span>"
+        rows += f"<div class='hm-row'><span class='hm-day'>{day_labels[wd]}</span>{cells}</div>"
+    return f"<div class='heatmap'>{rows}</div>"
+
+
 def _tombstone(idx: int, facts: RepoFacts, cls: Classification, eulogy: str, plan: str | None, anonymize: bool) -> str:
     display_name = f"REPO-{idx:03d}" if anonymize else facts.name
     last_words = facts.last_commits[0] if facts.last_commits else "…"
@@ -115,11 +135,17 @@ def _tombstone(idx: int, facts: RepoFacts, cls: Classification, eulogy: str, pla
     epitaph_line = EPITAPHS.get(cls.cause, "It is gone now.")
 
     diff_html = ""
+    heatmap = _heatmap_html(facts)
+    seance_extra = ""
+    if heatmap:
+        seance_extra += f"<p class='seance-sub'>Your commit rhythm (weekday × hour):</p>{heatmap}"
     if facts.last_diff_stat:
         diff_lines = "".join(
             f"<div class='diff-line'>{_esc(l)}</div>" for l in facts.last_diff_stat.splitlines()
         )
-        diff_html = f"<div class='seance-panel'><div class='seance-title'>🔦 The Séance</div><p class='seance-sub'>Here's what you were doing when you stopped:</p><pre class='diff'>{diff_lines}</pre></div>"
+        seance_extra += f"<p class='seance-sub'>Here's what you were doing when you stopped:</p><pre class='diff'>{diff_lines}</pre>"
+    if seance_extra:
+        diff_html = f"<div class='seance-panel'><div class='seance-title'>🔦 The Séance</div>{seance_extra}</div>"
 
     plan_html = ""
     if plan:
@@ -465,6 +491,12 @@ header { text-align: center; margin-bottom: 50px; }
   overflow-x: auto; font-family: 'Courier New', monospace; color: #a1a1aa;
 }
 .diff-line { white-space: pre; }
+
+.heatmap { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
+.hm-row { display: flex; align-items: center; gap: 2px; }
+.hm-day { width: 30px; font-size: 0.55rem; color: var(--dim); text-align: right; padding-right: 4px; flex-shrink: 0; }
+.hm-cell { width: 8px; height: 8px; border-radius: 1px; background: rgba(122, 122, 136, 0.12); flex-shrink: 0; }
+.hm-hit { box-shadow: 0 0 2px rgba(139, 92, 246, 0.3); }
 
 .alive-section { margin-top: 20px; }
 .alive-section h3 {

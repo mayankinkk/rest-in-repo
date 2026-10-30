@@ -184,6 +184,18 @@ class ClassifierTests(unittest.TestCase):
         self.assertEqual(len(buckets), 20)
         self.assertEqual(sum(buckets), 10)
 
+    def test_commit_heatmap_shape(self):
+        b = RepoBuilder(self.root, "heat")
+        night = BASE.replace(hour=23)
+        spaced_commits(b, night, 10, step_days=1)
+        facts = scan_repo(self.root / "heat")
+        grid = facts.commit_heatmap()
+        self.assertEqual(len(grid), 7)
+        self.assertTrue(all(len(row) == 24 for row in grid))
+        self.assertEqual(sum(sum(row) for row in grid), 10)
+        # late-night commits should land in the 23:00 column
+        self.assertEqual(sum(row[23] for row in grid), 10)
+
 
 if __name__ == "__main__":
     unittest.main()
