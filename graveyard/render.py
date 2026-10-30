@@ -161,6 +161,7 @@ def _tombstone(idx: int, facts: RepoFacts, cls: Classification, eulogy: str, ano
       </div>
       <div class="cert" data-field="cert">📜 {_esc(cls.death_certificate)}</div>
       <button class="seance-btn" type="button">🔦 Hold a Séance</button>
+      <button class="export-btn" type="button">📷 Export PNG</button>
       {diff_html}
     </article>
     """
@@ -388,6 +389,14 @@ header { text-align: center; margin-bottom: 50px; }
 }
 .seance-btn:hover { background: rgba(139, 92, 246, 0.15); box-shadow: 0 0 15px rgba(139, 92, 246, 0.2); }
 
+.export-btn {
+  width: 100%; padding: 8px; margin-top: 8px; background: transparent;
+  border: 1px solid var(--stone-edge); color: var(--dim);
+  border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 0.78rem;
+  transition: all 0.2s;
+}
+.export-btn:hover { border-color: var(--gold); color: var(--gold); }
+
 .seance-panel { display: none; margin-top: 14px; }
 .seance-panel.open { display: block; animation: fadeIn 0.4s ease; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
@@ -441,6 +450,93 @@ document.querySelectorAll('.seance-btn').forEach(btn => {
       panel.classList.toggle('open');
       btn.textContent = panel.classList.contains('open') ? '🕯️ Close the Séance' : '🔦 Hold a Séance';
     }
+  });
+});
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
+  const words = String(text).split(' ');
+  let line = '', lines = 0;
+  for (let i = 0; i < words.length; i++) {
+    const test = line + words[i] + ' ';
+    if (ctx.measureText(test).width > maxWidth && line) {
+      ctx.fillText(line.trim(), x, y);
+      line = words[i] + ' ';
+      y += lineHeight;
+      lines++;
+      if (lines >= maxLines) return y;
+    } else {
+      line = test;
+    }
+  }
+  if (line && lines < maxLines) { ctx.fillText(line.trim(), x, y); y += lineHeight; }
+  return y;
+}
+
+document.querySelectorAll('.export-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const tomb = btn.closest('.tombstone');
+    const g = (sel) => { const el = tomb.querySelector(sel); return el ? el.textContent.trim() : ''; };
+    const name = g('.repo-name');
+    const cause = g('.cause-chip');
+    const born = g('[data-field="born"] .val') || g('.dates .val');
+    const died = tomb.querySelectorAll('.dates .val')[1] ? tomb.querySelectorAll('.dates .val')[1].textContent.trim() : '';
+    const lifespan = g('.lifespan');
+    const lastwords = g('.lw-msg');
+    const eulogy = g('[data-field="eulogy"]');
+    const causeColor = getComputedStyle(tomb).getPropertyValue('--accent').trim() || '#8b5cf6';
+
+    const W = 800, pad = 48;
+    const cv = document.createElement('canvas');
+    const scale = 2;
+    cv.width = W * scale; cv.height = 1000 * scale;
+    const ctx = cv.getContext('2d');
+    ctx.scale(scale, scale);
+
+    ctx.fillStyle = '#0a0a0f'; ctx.fillRect(0, 0, W, 1000);
+    ctx.strokeStyle = '#2a2a35'; ctx.lineWidth = 2;
+    ctx.strokeRect(pad, pad, W - pad * 2, 1000 - pad * 2);
+    ctx.fillStyle = causeColor;
+    ctx.fillRect(W / 2 - 40, pad, 80, 4);
+
+    let y = pad + 60;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#c4b5fd';
+    ctx.font = '16px "Courier New", monospace';
+    ctx.fillText(cause, W / 2, y); y += 46;
+    ctx.fillStyle = '#e8e8f0';
+    ctx.font = 'bold 40px "Courier New", monospace';
+    ctx.fillText(name, W / 2, y); y += 40;
+    ctx.fillStyle = '#7a7a88';
+    ctx.font = 'italic 15px Georgia, serif';
+    const epi = g('.epitaph');
+    y = wrapText(ctx, epi, W / 2, y, W - pad * 3, 20, 2) + 14;
+
+    ctx.fillStyle = '#d4af37';
+    ctx.font = '16px "Courier New", monospace';
+    ctx.fillText(born + '  †  ' + died, W / 2, y); y += 26;
+    ctx.fillText(lifespan, W / 2, y); y += 34;
+
+    ctx.fillStyle = '#12121a';
+    ctx.fillRect(pad + 20, y, W - (pad + 20) * 2, 70);
+    ctx.fillStyle = '#7a7a88'; ctx.font = '12px "Courier New", monospace';
+    ctx.fillText('LAST WORDS', W / 2, y + 22);
+    ctx.fillStyle = '#c8c8d0'; ctx.font = 'italic 15px Georgia, serif';
+    wrapText(ctx, lastwords, W / 2, y + 46, W - pad * 3, 18, 2);
+    y += 96;
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#c8c8d0'; ctx.font = '15px Georgia, serif';
+    y = wrapText(ctx, eulogy, pad + 30, y, W - (pad + 30) * 2, 22, 7);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#7a7a88'; ctx.font = '12px "Courier New", monospace';
+    ctx.fillText('Rest in Repo — generated locally', W / 2, 1000 - pad - 16);
+
+    const a = document.createElement('a');
+    a.download = name.replace(/[^a-z0-9_-]/gi, '_') + '_tombstone.png';
+    a.href = cv.toDataURL('image/png');
+    a.click();
   });
 });
 
