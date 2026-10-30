@@ -55,20 +55,24 @@ class RepoFacts:
         return max(0, (now - self.last_commit).days)
 
     def activity_buckets(self, n: int = 40) -> list[int]:
-        """Bucket commits across the project's full life (first commit -> now).
+        """Bucket commits across the project's life, with a grace period after death.
 
-        The empty space on the right is the silence after death — that's the point.
+        The window runs first commit -> last commit + a proportional grace, so the
+        activity pattern stays legible while a slice of the post-death silence still
+        shows at the right edge.
         """
-        if not self.commit_dates or not self.first_commit:
+        if not self.commit_dates or not self.first_commit or not self.last_commit:
             return [0] * n
         start = self.first_commit
-        end = datetime.now(timezone.utc)
-        span = (end - start).total_seconds()
+        life = (self.last_commit - self.first_commit).total_seconds()
+        grace = max(life * 0.25, 14 * 86400)
+        end_timestamp = self.last_commit.timestamp() + grace
+        span = end_timestamp - start.timestamp()
         if span <= 0:
             return [0] * n
         buckets = [0] * n
         for d in self.commit_dates:
-            frac = (d - start).total_seconds() / span
+            frac = (d.timestamp() - start.timestamp()) / span
             idx = min(n - 1, max(0, int(frac * n)))
             buckets[idx] += 1
         return buckets
