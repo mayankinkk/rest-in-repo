@@ -133,7 +133,8 @@ def _tombstone(idx: int, facts: RepoFacts, cls: Classification, eulogy: str, ano
     )
 
     return f"""
-    <article class="tombstone {cause_css}" data-anon-name="REPO-{idx:03d}" data-real-name="{_esc(facts.name)}">
+    <article class="tombstone {cause_css}" data-anon-name="REPO-{idx:03d}" data-real-name="{_esc(facts.name)}"
+             data-cause="{_esc(cls.cause)}" data-lifespan="{facts.lifespan_days}" data-commits="{facts.commit_count}">
       <div class="tombstone-top">
         <span class="cause-chip">{emoji} {_esc(cls.cause_label)}</span>
         <span class="confidence conf-{_esc(cls.confidence)}">{_esc(cls.confidence)} confidence</span>
@@ -246,6 +247,25 @@ header { text-align: center; margin-bottom: 50px; }
 }
 .toggle-wrap input { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
 .toggle-wrap label { cursor: pointer; user-select: none; }
+
+.toolbar {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 16px; margin: 20px 0 30px; flex-wrap: wrap;
+}
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 6px 14px; border-radius: 16px; cursor: pointer;
+  background: var(--stone); border: 1px solid var(--stone-edge);
+  color: var(--dim); font-family: inherit; font-size: 0.75rem;
+  transition: all 0.2s;
+}
+.chip:hover { border-color: var(--accent); color: var(--text); }
+.chip-active { background: rgba(139,92,246,0.18); border-color: var(--accent); color: var(--accent); }
+.sort-select {
+  padding: 8px 12px; border-radius: 8px; cursor: pointer;
+  background: var(--stone); border: 1px solid var(--stone-edge);
+  color: var(--text); font-family: inherit; font-size: 0.78rem;
+}
 
 .stats {
   display: grid;
@@ -424,6 +444,42 @@ document.querySelectorAll('.seance-btn').forEach(btn => {
   });
 });
 
+const grid = document.querySelector('.grid');
+const tombs = () => Array.from(document.querySelectorAll('.tombstone'));
+
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('chip-active'));
+    chip.classList.add('chip-active');
+    const filter = chip.dataset.filter;
+    tombs().forEach(t => {
+      t.style.display = (filter === 'all' || t.dataset.cause === filter) ? '' : 'none';
+    });
+  });
+});
+
+const sortSelect = document.getElementById('sortSelect');
+if (sortSelect && grid) {
+  const original = tombs();
+  sortSelect.addEventListener('change', () => {
+    const mode = sortSelect.value;
+    const items = tombs();
+    items.sort((a, b) => {
+      switch (mode) {
+        case 'lifespan-desc': return +b.dataset.lifespan - +a.dataset.lifespan;
+        case 'lifespan-asc': return +a.dataset.lifespan - +b.dataset.lifespan;
+        case 'commits-desc': return +b.dataset.commits - +a.dataset.commits;
+        case 'commits-asc': return +a.dataset.commits - +b.dataset.commits;
+        case 'name':
+          return (a.dataset.realName || '').localeCompare(b.dataset.realName || '');
+        default:
+          return original.indexOf(a) - original.indexOf(b);
+      }
+    });
+    items.forEach(el => grid.appendChild(el));
+  });
+}
+
 const anonToggle = document.getElementById('anonToggle');
 if (anonToggle) {
   anonToggle.addEventListener('change', () => {
@@ -541,6 +597,26 @@ def render(
 
     generated = datetime.now().strftime("%B %d, %Y at %I:%M %p")
 
+    filter_html = ""
+    if dead:
+        present_causes = list(dict.fromkeys(c.cause for _, c, _ in dead))
+        chips = "<button class='chip chip-active' data-filter='all'>All</button>"
+        for cause in present_causes:
+            label = cause_labels.get(cause, cause)
+            chips += f"<button class='chip' data-filter='{_esc(cause)}'>{_esc(label)}</button>"
+        filter_html = f"""
+    <div class="toolbar">
+      <div class="chip-row">{chips}</div>
+      <select id="sortSelect" class="sort-select">
+        <option value="default">Sort: Default</option>
+        <option value="lifespan-desc">Longest lived</option>
+        <option value="lifespan-asc">Shortest lived</option>
+        <option value="commits-desc">Most commits</option>
+        <option value="commits-asc">Fewest commits</option>
+        <option value="name">Name (A–Z)</option>
+      </select>
+    </div>"""
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -561,6 +637,7 @@ def render(
         <label for="anonToggle">🕵️ Anonymize (hide names &amp; messages)</label>
       </div>
     </div>
+    {filter_html}
   </header>
   {stats_html}
   {empty}
