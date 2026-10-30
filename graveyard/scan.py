@@ -54,6 +54,25 @@ class RepoFacts:
         now = datetime.now(timezone.utc)
         return max(0, (now - self.last_commit).days)
 
+    def activity_buckets(self, n: int = 40) -> list[int]:
+        """Bucket commits across the project's full life (first commit -> now).
+
+        The empty space on the right is the silence after death — that's the point.
+        """
+        if not self.commit_dates or not self.first_commit:
+            return [0] * n
+        start = self.first_commit
+        end = datetime.now(timezone.utc)
+        span = (end - start).total_seconds()
+        if span <= 0:
+            return [0] * n
+        buckets = [0] * n
+        for d in self.commit_dates:
+            frac = (d - start).total_seconds() / span
+            idx = min(n - 1, max(0, int(frac * n)))
+            buckets[idx] += 1
+        return buckets
+
     def to_dict(self) -> dict:
         return {
             "name": self.name,

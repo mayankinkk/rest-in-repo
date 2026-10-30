@@ -98,6 +98,19 @@ def _tombstone(idx: int, facts: RepoFacts, cls: Classification, eulogy: str, ano
         )
         diff_html = f"<div class='seance-panel'><div class='seance-title'>🔦 The Séance</div><p class='seance-sub'>Here's what you were doing when you stopped:</p><pre class='diff'>{diff_lines}</pre></div>"
 
+    buckets = facts.activity_buckets(40)
+    peak = max(buckets) if buckets else 0
+    bars = ""
+    for b in buckets:
+        if peak > 0 and b > 0:
+            h = max(2, round((b / peak) * 22))
+            bar_cls = "bar bar-hit"
+        else:
+            h = 1
+            bar_cls = "bar bar-empty"
+        bars += f"<span class='{bar_cls}' style='height:{h}px' title='{b} commits'></span>"
+    strip = f"<div class='activity-strip' title='Commit activity across the project lifetime'>{bars}</div>"
+
     todos_badge = (
         f"<span class='badge badge-todos'>🧟 {facts.todo_count} TODO{'' if facts.todo_count == 1 else 's'} left behind</span>"
         if facts.todo_count > 0
@@ -118,6 +131,7 @@ def _tombstone(idx: int, facts: RepoFacts, cls: Classification, eulogy: str, ano
         <div><span class="label">Died</span><span class="val" data-field="died">{_esc(facts.died)}</span></div>
       </div>
       <p class="lifespan" data-field="lifespan">lived {_esc(str(facts.lifespan_days))} days · {_esc(str(facts.commit_count))} commits · {(_esc(langs))}</p>
+      {strip}
       <div class="last-words">
         <span class="lw-label">Last words:</span>
         <span class="lw-msg" data-field="lastwords">“{_esc(display_last)}”</span>
@@ -279,7 +293,17 @@ header { text-align: center; margin-bottom: 50px; }
 .dates .val { color: var(--text); font-size: 0.9rem; }
 .cross { color: var(--accent); font-size: 1.4rem; }
 
-.lifespan { text-align: center; color: var(--gold); font-size: 0.8rem; margin-bottom: 16px; }
+.lifespan { text-align: center; color: var(--gold); font-size: 0.8rem; margin-bottom: 10px; }
+
+.activity-strip {
+  display: flex; align-items: flex-end; gap: 2px;
+  height: 24px; margin: 0 auto 16px; padding: 0 4px;
+  background: rgba(0,0,0,0.25); border-radius: 4px;
+  border-bottom: 1px solid var(--stone-edge);
+}
+.activity-strip .bar { flex: 1; min-width: 1px; border-radius: 1px 1px 0 0; }
+.activity-strip .bar-hit { background: var(--accent); box-shadow: 0 0 4px rgba(139,92,246,0.5); }
+.activity-strip .bar-empty { background: rgba(122,122,136,0.18); }
 
 .last-words {
   background: rgba(0,0,0,0.3); border-left: 3px solid var(--accent);
