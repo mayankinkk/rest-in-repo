@@ -120,6 +120,14 @@ class ClassifierTests(unittest.TestCase):
         result = self._classify("slow-burst")
         self.assertNotEqual(result.cause, "hackathon_orphan")
 
+    def test_almost_quit_gap_detected(self):
+        b = RepoBuilder(self.root, "quitter")
+        spaced_commits(b, BASE, 5, step_days=1)  # active first week
+        # 60-day silence, then one more commit
+        b.commit(BASE + timedelta(days=65), "came back", filename="a.py")
+        facts = scan_repo(self.root / "quitter")
+        self.assertGreaterEqual(facts.max_mid_gap_days, 55)
+
     def test_threshold_respects_recency(self):
         b = RepoBuilder(self.root, "recent-baby")
         b.commit(BASE, "init", filename="a.py")

@@ -111,6 +111,11 @@ def classify(facts: RepoFacts, dead_threshold: int = DEAD_THRESHOLD_DAYS) -> Cla
     early_rate, late_rate = _commit_cadence(facts.commit_dates)
     activity_ratio = _recent_activity_ratio(facts.commit_dates)
 
+    if facts.max_mid_gap_days >= 30:
+        reasons.append(
+            f"Almost quit once: went {facts.max_mid_gap_days} days without a commit, then came back."
+        )
+
     if days_dead < dead_threshold:
         return Classification(
             cause="alive",

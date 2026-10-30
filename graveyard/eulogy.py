@@ -58,6 +58,7 @@ FACTS:
 - Leftover TODO/FIXME: {facts.todo_count}
 - Had README: {facts.has_readme}
 - Had tests: {facts.has_tests}
+- Almost quit once (longest gap between commits): {"yes, " + str(facts.max_mid_gap_days) + " days" if facts.max_mid_gap_days >= 30 else "no"}
 - Last words (final commit message): "{last_words}"
 
 Eulogy (output only the eulogy):"""

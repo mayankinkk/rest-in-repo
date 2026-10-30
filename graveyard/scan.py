@@ -31,6 +31,7 @@ class RepoFacts:
     release_commit: bool = False
     dependency_growth: float = 0.0
     last_diff_stat: str = ""
+    max_mid_gap_days: int = 0
     error: str | None = None
 
     @property
@@ -99,6 +100,7 @@ class RepoFacts:
             "release_commit": self.release_commit,
             "dependency_growth": self.dependency_growth,
             "last_diff_stat": self.last_diff_stat,
+            "max_mid_gap_days": self.max_mid_gap_days,
             "error": self.error,
         }
 
@@ -247,6 +249,18 @@ def _detect_fix_loop(last_msgs: list[str]) -> bool:
     return hits >= max(3, len(last_msgs) // 2)
 
 
+def _max_mid_gap(dates: list[datetime]) -> int:
+    """Longest stretch of consecutive days with no commit between two commits.
+
+    A large mid-life gap means the developer almost quit, then came back.
+    """
+    if len(dates) < 2:
+        return 0
+    ordered = sorted(dates)
+    gaps = [(ordered[i + 1] - ordered[i]).days for i in range(len(ordered) - 1)]
+    return max(gaps) if gaps else 0
+
+
 def _detect_dependency_growth(repo: Path) -> float:
     import json as _json
 
@@ -327,6 +341,8 @@ def scan_repo(repo_path: Path) -> RepoFacts:
         )
 
     facts.fix_loop = _detect_fix_loop(facts.last_commits)
+
+    facts.max_mid_gap_days = _max_mid_gap(facts.commit_dates)
 
     diff_raw = _run_git(repo_path, "show", "--stat", "--format=", "HEAD")
     if diff_raw:
