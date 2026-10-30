@@ -370,6 +370,40 @@ header { text-align: center; margin-bottom: 50px; }
   gap: 24px; margin-bottom: 50px;
 }
 
+.view-toggle {
+  background: transparent; border: none; color: var(--accent);
+  font-family: inherit; font-size: 0.9rem; cursor: pointer; padding: 0;
+}
+.view-toggle:hover { text-shadow: 0 0 10px rgba(139, 92, 246, 0.5); }
+
+.grid.map-mode {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end;
+  gap: 28px 36px; padding: 34px 20px; border-radius: 18px;
+  background:
+    radial-gradient(ellipse 120% 60% at 50% 120%, #14532d 0%, transparent 60%),
+    linear-gradient(180deg, #0d1f12 0%, #12291a 100%);
+  border: 1px solid #1f3d29;
+  min-height: 260px;
+}
+.map-mode .tombstone {
+  width: 130px; padding: 18px 10px 14px; border-radius: 44px 44px 6px 6px;
+  background: linear-gradient(180deg, #3a3a44 0%, #26262e 100%);
+  border: 1px solid #44444e; text-align: center;
+}
+.map-mode .tombstone::before { width: 34px; }
+.map-mode .tombstone:nth-child(3n) { transform: rotate(-3deg); margin-bottom: 14px; }
+.map-mode .tombstone:nth-child(3n+1) { transform: rotate(2.5deg); margin-bottom: 4px; }
+.map-mode .tombstone:nth-child(4n) { transform: rotate(-1.5deg); margin-bottom: 22px; }
+.map-mode .tombstone:hover { transform: translateY(-5px) rotate(0deg); box-shadow: 0 12px 24px rgba(0,0,0,0.5); }
+.map-mode .tombstone-top,
+.map-mode .epitaph, .map-mode .dates, .map-mode .lifespan,
+.map-mode .activity-strip, .map-mode .last-words, .map-mode .eulogy,
+.map-mode .badges, .map-mode .cert, .map-mode .seance-btn,
+.map-mode .export-btn, .map-mode .resurrect-btn,
+.map-mode .seance-panel, .map-mode .resurrect-panel { display: none; }
+.map-mode .repo-name { font-size: 0.82rem; margin-bottom: 6px; }
+.map-mode .cause-chip { font-size: 0.52rem; padding: 2px 7px; }
+
 .tombstone {
   background: linear-gradient(180deg, var(--stone) 0%, var(--bg2) 100%);
   border: 1px solid var(--stone-edge);
@@ -711,6 +745,20 @@ if (anonToggle) {
     });
   });
 }
+
+const viewToggle = document.getElementById('viewToggle');
+if (viewToggle && grid) {
+  const applyView = (mode) => {
+    const isMap = mode === 'map';
+    grid.classList.toggle('map-mode', isMap);
+    viewToggle.textContent = isMap ? '🪦 Grid view' : '🗺️ Map view';
+    localStorage.setItem('graveyard-view', mode);
+  };
+  applyView(localStorage.getItem('graveyard-view') || 'grid');
+  viewToggle.addEventListener('click', () => {
+    applyView(grid.classList.contains('map-mode') ? 'grid' : 'map');
+  });
+}
 """
 
 
@@ -835,6 +883,9 @@ def render(
       <div class="toggle-wrap">
         <input type="checkbox" id="anonToggle" {'checked' if anonymize else ''}>
         <label for="anonToggle">🕵️ Anonymize (hide names &amp; messages)</label>
+      </div>
+      <div class="toggle-wrap">
+        <button id="viewToggle" class="view-toggle" type="button">🗺️ Map view</button>
       </div>
     </div>
     {filter_html}
