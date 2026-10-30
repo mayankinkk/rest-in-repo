@@ -178,6 +178,9 @@ def classify(facts: RepoFacts, dead_threshold: int = DEAD_THRESHOLD_DAYS) -> Cla
         return _result("scope_creep", reasons, "medium")
 
     reasons.append(f"Quietly stopped {days_dead} days ago after {facts.commit_count} commits.")
+    if facts.looks_finished:
+        reasons.append("Last commit reads as a finishing move — this one looked done, not abandoned.")
+        return _result("abandoned", reasons, "medium")
     return _result("abandoned", reasons, "low")
 
 

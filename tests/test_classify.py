@@ -128,6 +128,26 @@ class ClassifierTests(unittest.TestCase):
         facts = scan_repo(self.root / "quitter")
         self.assertGreaterEqual(facts.max_mid_gap_days, 55)
 
+    def test_looks_finished_bumps_confidence(self):
+        b = RepoBuilder(self.root, "finished")
+        b.write("README.md", "# done\n")
+        spaced_commits(b, BASE, 5, step_days=4)  # 20-day lifespan, not born_dead
+        b.commit(BASE + timedelta(days=20), "done", filename="a.py")
+        facts = scan_repo(self.root / "finished")
+        self.assertTrue(facts.looks_finished)
+        result = classify(facts)
+        self.assertEqual(result.cause, "abandoned")
+        self.assertEqual(result.confidence, "medium")
+
+    def test_looks_finished_false_for_midwork_stop(self):
+        b = RepoBuilder(self.root, "midwork")
+        spaced_commits(b, BASE, 5, step_days=4)
+        b.commit(BASE + timedelta(days=20), "add more features later", filename="a.py")
+        facts = scan_repo(self.root / "midwork")
+        self.assertFalse(facts.looks_finished)
+        result = classify(facts)
+        self.assertEqual(result.confidence, "low")
+
     def test_threshold_respects_recency(self):
         b = RepoBuilder(self.root, "recent-baby")
         b.commit(BASE, "init", filename="a.py")

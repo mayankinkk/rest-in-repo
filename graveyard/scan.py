@@ -32,6 +32,7 @@ class RepoFacts:
     dependency_growth: float = 0.0
     last_diff_stat: str = ""
     max_mid_gap_days: int = 0
+    looks_finished: bool = False
     error: str | None = None
 
     @property
@@ -101,6 +102,7 @@ class RepoFacts:
             "dependency_growth": self.dependency_growth,
             "last_diff_stat": self.last_diff_stat,
             "max_mid_gap_days": self.max_mid_gap_days,
+            "looks_finished": self.looks_finished,
             "error": self.error,
         }
 
@@ -261,6 +263,24 @@ def _max_mid_gap(dates: list[datetime]) -> int:
     return max(gaps) if gaps else 0
 
 
+FINISH_RE = re.compile(
+    r"\b(done|finished?|complete[ds]?|ship(ped|ping)?|release[ds]?|"
+    r"v\d+\.\d+(\.\d+)?|final|polish(ed)?|clean(ed)?[ -]?up|"
+    r"docs?|readme|bump|tag(ged)?|launch(ed)?|wrap(ped)?[ -]?up|"
+    r"good ?enough)\b",
+    re.IGNORECASE,
+)
+
+
+def _looks_finished(last_msgs: list[str], has_readme: bool, todo_count: int) -> bool:
+    """Heuristic: the last commit is a finishing move, not a mid-work stop."""
+    if not last_msgs:
+        return False
+    if not FINISH_RE.search(last_msgs[0]):
+        return False
+    return has_readme or todo_count <= 2
+
+
 def _detect_dependency_growth(repo: Path) -> float:
     import json as _json
 
@@ -358,6 +378,8 @@ def scan_repo(repo_path: Path) -> RepoFacts:
     facts.has_readme = tree["has_readme"]
     facts.has_tests = tree["has_tests"]
     facts.has_deploy = tree["has_deploy"]
+
+    facts.looks_finished = _looks_finished(facts.last_commits, facts.has_readme, facts.todo_count)
 
     facts.dependency_growth = _detect_dependency_growth(repo_path)
 
