@@ -30,6 +30,16 @@ ollama pull gemma3:4b
 
 No Python packages needed — the whole thing uses only the standard library.
 
+## Tests
+
+The classifier is pinned by fixture-based unit tests (stdlib `unittest`, no extra deps):
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Each test builds a synthetic git repo with a controlled commit history and asserts the cause of death.
+
 ## Usage
 
 ```bash
