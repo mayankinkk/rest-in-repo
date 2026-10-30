@@ -148,6 +148,26 @@ class ClassifierTests(unittest.TestCase):
         result = classify(facts)
         self.assertEqual(result.confidence, "low")
 
+    def test_night_owl_detected(self):
+        b = RepoBuilder(self.root, "owl")
+        night = BASE.replace(hour=23, minute=0)
+        spaced_commits(b, night, 10, step_days=1)
+        facts = scan_repo(self.root / "owl")
+        self.assertTrue(facts.night_owl)
+
+    def test_death_certificate_uses_last_commit_time(self):
+        b = RepoBuilder(self.root, "tod")
+        b.commit(BASE, "init", filename="a.py")
+        # sudden-death shape: many commits, active near end
+        spaced_commits(b, BASE, 25, step_days=3)
+        facts = scan_repo(self.root / "tod")
+        result = classify(facts)
+        self.assertEqual(result.cause, "sudden_death")
+        self.assertIn("Time of death", result.death_certificate)
+        self.assertIn("2024", result.death_certificate)
+        # must reflect a commit date, not "today"
+        self.assertNotIn(datetime.now().strftime("%b %d, %Y"), result.death_certificate)
+
     def test_threshold_respects_recency(self):
         b = RepoBuilder(self.root, "recent-baby")
         b.commit(BASE, "init", filename="a.py")

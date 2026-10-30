@@ -59,6 +59,8 @@ FACTS:
 - Had README: {facts.has_readme}
 - Had tests: {facts.has_tests}
 - Almost quit once (longest gap between commits): {"yes, " + str(facts.max_mid_gap_days) + " days" if facts.max_mid_gap_days >= 30 else "no"}
+- Night owl (most commits after dark): {"yes" if facts.night_owl else "no"}
+- Time of death (final commit): {facts.death_time_str or "unknown"}
 - Last words (final commit message): "{last_words}"
 
 Eulogy (output only the eulogy):"""

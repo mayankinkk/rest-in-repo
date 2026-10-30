@@ -152,6 +152,12 @@ def _tombstone(idx: int, facts: RepoFacts, cls: Classification, eulogy: str, ano
         else ""
     )
 
+    night_badge = (
+        "<span class='badge badge-night'>🦉 Night owl</span>"
+        if facts.night_owl
+        else ""
+    )
+
     return f"""
     <article class="tombstone {cause_css}" data-anon-name="REPO-{idx:03d}" data-real-name="{_esc(facts.name)}"
              data-cause="{_esc(cls.cause)}" data-lifespan="{facts.lifespan_days}" data-commits="{facts.commit_count}">
@@ -177,6 +183,7 @@ def _tombstone(idx: int, facts: RepoFacts, cls: Classification, eulogy: str, ano
         {todos_badge}
         {almost_quit_badge}
         {finished_badge}
+        {night_badge}
         {("<span class='badge badge-good'>✅ README</span>" if facts.has_readme else "<span class='badge badge-miss'>❌ No README</span>")}
         {("<span class='badge badge-good'>✅ Tests</span>" if facts.has_tests else "<span class='badge badge-miss'>❌ No tests</span>")}
         {("<span class='badge badge-good'>🚀 Deploy config</span>" if facts.has_deploy else "")}
@@ -399,6 +406,7 @@ header { text-align: center; margin-bottom: 50px; }
 .badge-todos { background: rgba(251, 191, 36, 0.1); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.2); }
 .badge-quit { background: rgba(244, 114, 182, 0.1); color: #f472b6; border: 1px solid rgba(244, 114, 182, 0.2); }
 .badge-finished { background: rgba(74, 222, 128, 0.1); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.35); }
+.badge-night { background: rgba(96, 165, 250, 0.1); color: #60a5fa; border: 1px solid rgba(96, 165, 250, 0.25); }
 
 .cert {
   font-size: 0.75rem; color: var(--dim); font-style: italic;

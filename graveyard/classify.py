@@ -110,6 +110,7 @@ def classify(facts: RepoFacts, dead_threshold: int = DEAD_THRESHOLD_DAYS) -> Cla
     days_dead = facts.days_since_death
     early_rate, late_rate = _commit_cadence(facts.commit_dates)
     activity_ratio = _recent_activity_ratio(facts.commit_dates)
+    death_dt = facts.last_commit_local or facts.last_commit
 
     if facts.max_mid_gap_days >= 30:
         reasons.append(
@@ -151,7 +152,7 @@ def classify(facts: RepoFacts, dead_threshold: int = DEAD_THRESHOLD_DAYS) -> Cla
 
     if facts.fix_loop:
         reasons.append("Last commits are a wall of fix/bug/again.")
-        return _result("fix_loop", reasons, "high")
+        return _result("fix_loop", reasons, "high", death_time=death_dt)
 
     if (facts.has_deploy or facts.release_commit) and days_dead >= dead_threshold:
         reasons.append(
@@ -163,7 +164,7 @@ def classify(facts: RepoFacts, dead_threshold: int = DEAD_THRESHOLD_DAYS) -> Cla
         reasons.append(
             f"{facts.commit_count} commits, still active near the end, then nothing for {days_dead} days."
         )
-        return _result("sudden_death", reasons, "medium")
+        return _result("sudden_death", reasons, "medium", death_time=death_dt)
 
     if early_rate > 0 and late_rate > 0 and late_rate < early_rate * 0.35 and days_dead >= dead_threshold:
         reasons.append(
@@ -184,11 +185,16 @@ def classify(facts: RepoFacts, dead_threshold: int = DEAD_THRESHOLD_DAYS) -> Cla
     return _result("abandoned", reasons, "low")
 
 
-def _result(cause: str, reasons: list[str], confidence: str) -> Classification:
-    ts = datetime.now().strftime("%I:%M %p").lstrip("0")
+def _result(
+    cause: str,
+    reasons: list[str],
+    confidence: str,
+    death_time: datetime | None = None,
+) -> Classification:
     cert = DEATH_CERT_NOTES[cause]
-    if cause in ("fix_loop", "sudden_death"):
-        cert = f"{cert} Time of death: {ts}."
+    if cause in ("fix_loop", "sudden_death") and death_time is not None:
+        ts = death_time.strftime("%I:%M %p").lstrip("0")
+        cert = f"{cert} Time of death: {ts} on {death_time.strftime('%b %d, %Y')}."
     return Classification(
         cause=cause,
         cause_label=CAUSES[cause],

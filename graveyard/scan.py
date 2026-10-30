@@ -19,6 +19,8 @@ class RepoFacts:
     commit_count: int = 0
     active_days: int = 0
     commit_dates: list[datetime] = field(default_factory=list)
+    commit_hours: list[int] = field(default_factory=list)
+    last_commit_local: datetime | None = None
     last_commits: list[str] = field(default_factory=list)
     todo_count: int = 0
     has_readme: bool = False
@@ -33,6 +35,7 @@ class RepoFacts:
     last_diff_stat: str = ""
     max_mid_gap_days: int = 0
     looks_finished: bool = False
+    night_owl: bool = False
     error: str | None = None
 
     @property
@@ -55,6 +58,14 @@ class RepoFacts:
             return 9999
         now = datetime.now(timezone.utc)
         return max(0, (now - self.last_commit).days)
+
+    @property
+    def death_time_str(self) -> str:
+        """Local-clock time of the final commit — the real time of death."""
+        dt = self.last_commit_local or self.last_commit
+        if not dt:
+            return ""
+        return dt.strftime("%I:%M %p").lstrip("0")
 
     def activity_buckets(self, n: int = 40) -> list[int]:
         """Bucket commits across the project's life, with a grace period after death.
@@ -103,6 +114,7 @@ class RepoFacts:
             "last_diff_stat": self.last_diff_stat,
             "max_mid_gap_days": self.max_mid_gap_days,
             "looks_finished": self.looks_finished,
+            "night_owl": self.night_owl,
             "error": self.error,
         }
 
@@ -125,6 +137,14 @@ def _run_git(repo: Path, *args: str) -> str | None:
 def _parse_date(s: str) -> datetime | None:
     try:
         return datetime.fromisoformat(s).astimezone(timezone.utc)
+    except (ValueError, TypeError):
+        return None
+
+
+def _parse_local(s: str) -> datetime | None:
+    """Parse a git ISO date keeping the original local wall-clock time (with offset)."""
+    try:
+        return datetime.fromisoformat(s)
     except (ValueError, TypeError):
         return None
 
@@ -281,6 +301,14 @@ def _looks_finished(last_msgs: list[str], has_readme: bool, todo_count: int) -> 
     return has_readme or todo_count <= 2
 
 
+def _is_night_owl(hours: list[int]) -> bool:
+    """True when a large share of commits land between 22:00 and 05:00 local time."""
+    if len(hours) < 5:
+        return False
+    night = sum(1 for h in hours if h >= 22 or h < 5)
+    return night / len(hours) > 0.4
+
+
 def _detect_dependency_growth(repo: Path) -> float:
     import json as _json
 
@@ -340,6 +368,10 @@ def scan_repo(repo_path: Path) -> RepoFacts:
 
     date_lines = all_dates_raw.splitlines()
     facts.commit_dates = [d for d in (_parse_date(s) for s in date_lines) if d]
+    local_dts = [d for d in (_parse_local(s) for s in date_lines) if d]
+    facts.commit_hours = [d.hour for d in local_dts]
+    if local_dts:
+        facts.last_commit_local = local_dts[0]
     if not facts.commit_dates:
         facts.error = "could not parse dates"
         return facts
@@ -380,6 +412,7 @@ def scan_repo(repo_path: Path) -> RepoFacts:
     facts.has_deploy = tree["has_deploy"]
 
     facts.looks_finished = _looks_finished(facts.last_commits, facts.has_readme, facts.todo_count)
+    facts.night_owl = _is_night_owl(facts.commit_hours)
 
     facts.dependency_growth = _detect_dependency_growth(repo_path)
 
