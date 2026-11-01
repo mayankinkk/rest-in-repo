@@ -255,3 +255,76 @@ def generate_resurrection_plan(
         return plan, f"contained unverified numbers: {', '.join(bad)}", False
 
     return _fallback_resurrection_plan(facts, cause_label), "Ollama unavailable — used offline fallback.", True
+
+
+def _build_cross_repo_prompt(dead: list) -> str:
+    lines = "\n".join(
+        f"- {facts.name}: {cls.cause_label} ({facts.lifespan_days}d, {facts.commit_count} commits)"
+        for facts, cls, *_ in dead
+    )
+    return f"""You are writing one short collective eulogy for a graveyard of dead side projects.
+
+STRICT RULES:
+- Use ONLY the facts below. Do not invent numbers or details.
+- Output ONLY the eulogy. No preamble, no "Here is...".
+- Maximum 3 sentences. Speak about them as a group.
+
+PROJECTS (total buried: {len(dead)}):
+{lines}
+
+Collective eulogy (output only the eulogy):"""
+
+
+def _validate_cross(eulogy: str, dead: list) -> tuple[bool, list[str]]:
+    allowed = set()
+    for facts, *_ in dead:
+        for v in (facts.lifespan_days, facts.commit_count, facts.file_count, facts.todo_count):
+            allowed.add(str(v))
+        if facts.first_commit:
+            allowed.add(str(facts.first_commit.year))
+        if facts.last_commit:
+            allowed.add(str(facts.last_commit.year))
+    allowed.add(str(len(dead)))
+    allowed.update({"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "100"})
+    bad = [n for n in _numbers_in(eulogy) if n not in allowed]
+    return (not bad, bad)
+
+
+def _fallback_cross(dead: list) -> str:
+    names = ", ".join(f.name for f, *_ in dead[:4])
+    more = f" and {len(dead) - 4} more" if len(dead) > 4 else ""
+    return (
+        f"Here lie {len(dead)} side projects — {names}{more} — each one a bright idea "
+        f"that ran out of steam before it could ship. They shared one fate: too much "
+        f"ambition, not enough Sundays. May they rest in repo."
+    )
+
+
+def generate_cross_repo_eulogy(
+    dead: list,
+    model: str = DEFAULT_MODEL,
+    max_retries: int = 2,
+) -> tuple[str, str, bool]:
+    """Return (eulogy, validation_note, used_fallback) for the whole graveyard."""
+    if not dead:
+        return "", "", False
+    prompt = _build_cross_repo_prompt(dead)
+
+    for attempt in range(max_retries + 1):
+        response = _call_ollama(prompt, model)
+        if not response:
+            break
+
+        eulogy = _strip_preamble(response).strip('"')
+        if len(eulogy) > 500:
+            eulogy = eulogy[:497] + "..."
+
+        ok, bad = _validate_cross(eulogy, dead)
+        if ok:
+            return eulogy, "", False
+        if attempt < max_retries:
+            prompt = prompt + f"\n\nYour previous answer invented these numbers: {', '.join(bad)}. Regenerate using only the given facts."
+            continue
+        return eulogy, f"contained unverified numbers: {', '.join(bad)}", False
+
+    return _fallback_cross(dead), "Ollama unavailable — used offline fallback.", True

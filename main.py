@@ -8,7 +8,12 @@ import sys
 from pathlib import Path
 
 from graveyard.classify import DEAD_THRESHOLD_DAYS, classify
-from graveyard.eulogy import DEFAULT_MODEL, generate_eulogy, generate_resurrection_plan
+from graveyard.eulogy import (
+    DEFAULT_MODEL,
+    generate_cross_repo_eulogy,
+    generate_eulogy,
+    generate_resurrection_plan,
+)
 from graveyard.render import render
 from graveyard.scan import scan_all
 
@@ -104,7 +109,19 @@ def main() -> int:
         print(f"done{suffix}")
         results.append((facts, cls, eulogy, plan))
 
-    html = render(results, alive, anonymize=args.anonymize)
+    cross_eulogy = None
+    if results:
+        if args.no_ollama:
+            from graveyard.eulogy import _fallback_cross
+            cross_eulogy = _fallback_cross(results)
+        else:
+            cross_eulogy, cross_note, _ = generate_cross_repo_eulogy(
+                results, model=args.model,
+            )
+            if cross_note:
+                print(f"\n  ℹ collective eulogy: {cross_note}")
+
+    html = render(results, alive, anonymize=args.anonymize, graveyard_eulogy=cross_eulogy)
     args.output.write_text(html, encoding="utf-8")
 
     print(f"\n⚰️  Graveyard written to {args.output.resolve()}")

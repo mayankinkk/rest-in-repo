@@ -371,6 +371,14 @@ header { text-align: center; margin-bottom: 50px; }
 .stat-label { color: var(--dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; margin-top: 6px; }
 
 .dist-wrap { margin: -20px 0 40px; }
+
+.graveyard-eulogy {
+  background: linear-gradient(180deg, rgba(139,92,246,0.08), rgba(139,92,246,0.02));
+  border: 1px solid rgba(139,92,246,0.25); border-radius: 14px;
+  padding: 26px 30px; margin-bottom: 40px; text-align: center;
+}
+.ge-title { font-family: 'Creepster', cursive; color: var(--gold); font-size: 1.3rem; margin-bottom: 12px; }
+.ge-body { color: var(--text); font-size: 0.95rem; line-height: 1.7; max-width: 760px; margin: 0 auto; font-style: italic; }
 .dist-bar {
   display: flex; height: 10px; border-radius: 5px; overflow: hidden;
   background: var(--bg2); border: 1px solid var(--stone-edge);
@@ -823,6 +831,7 @@ def render(
     dead: list[tuple[RepoFacts, Classification, str, str | None]],
     alive: list[RepoFacts],
     anonymize: bool = False,
+    graveyard_eulogy: str | None = None,
 ) -> str:
     stats = _compute_stats(dead)
 
@@ -881,6 +890,14 @@ def render(
     tombstones = "".join(
         _tombstone(i, f, c, e, p, anonymize) for i, (f, c, e, p) in enumerate(dead, 1)
     )
+
+    cross_html = ""
+    if graveyard_eulogy:
+        cross_html = f"""
+        <section class="graveyard-eulogy">
+          <div class="ge-title">🕯️ A Eulogy for the Graveyard</div>
+          <p class="ge-body" data-field="eulogy">{_esc(graveyard_eulogy)}</p>
+        </section>"""
 
     alive_html = ""
     if alive:
@@ -949,6 +966,7 @@ def render(
     {filter_html}
   </header>
   {stats_html}
+  {cross_html}
   {empty}
   <div class="grid">{tombstones}</div>
   {alive_html}
