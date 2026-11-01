@@ -101,6 +101,7 @@ def _validate_eulogy(eulogy: str, facts: RepoFacts) -> tuple[bool, list[str]]:
         facts.active_days,
         facts.file_count,
         facts.todo_count,
+        facts.max_mid_gap_days,
         round(facts.size_bytes / 1024),
         round(facts.size_bytes / (1024 * 1024)),
     ]:
@@ -117,6 +118,8 @@ def _validate_eulogy(eulogy: str, facts: RepoFacts) -> tuple[bool, list[str]]:
 
     for msg in facts.last_commits:
         allowed_numbers.update(_numbers_in(msg))
+
+    allowed_numbers.update(_numbers_in(facts.death_time_str))
 
     allowed_numbers.update({"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "100"})
 
