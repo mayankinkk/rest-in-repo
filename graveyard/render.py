@@ -198,6 +198,7 @@ def _tombstone(idx: int, facts: RepoFacts, cls: Classification, eulogy: str, pla
       <div class="tombstone-top">
         <span class="cause-chip">{emoji} {_esc(cls.cause_label)}</span>
         <span class="confidence conf-{_esc(cls.confidence)}">{_esc(cls.confidence)} confidence</span>
+        <span class="candle" title="Blow it out"><span class="flame"></span></span>
       </div>
       <h2 class="repo-name" data-field="name">{_esc(display_name)}</h2>
       <p class="epitaph">Here lies {_esc(display_name)}. {_esc(epitaph_line)}</p>
@@ -275,6 +276,27 @@ body {
     radial-gradient(ellipse 80% 50% at 20% 100%, var(--fog), transparent),
     radial-gradient(ellipse 60% 40% at 80% 100%, var(--fog), transparent);
   animation: drift 20s ease-in-out infinite alternate;
+}
+#fogCanvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+
+.candle {
+  position: absolute; top: 12px; right: 14px;
+  width: 10px; height: 22px; background: #e8e0c8;
+  border-radius: 2px 2px 3px 3px; cursor: pointer; z-index: 2;
+  box-shadow: inset -2px 0 3px rgba(0,0,0,0.2);
+}
+.candle .flame {
+  position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+  width: 8px; height: 12px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: radial-gradient(circle at 50% 70%, #fff3b0, #fbbf24 55%, #f97316);
+  box-shadow: 0 0 10px 2px rgba(251, 191, 36, 0.7);
+  animation: flame 1.4s ease-in-out infinite alternate;
+}
+.candle.out .flame { animation: none; opacity: 0; transition: opacity 0.5s; }
+.candle.out { opacity: 0.7; }
+@keyframes flame {
+  from { transform: translateX(-50%) scaleY(1) rotate(-2deg); opacity: 0.9; }
+  to { transform: translateX(-50%) scaleY(1.15) rotate(2deg); opacity: 1; }
 }
 @keyframes drift {
   from { transform: translateX(-3%); opacity: 0.6; }
@@ -565,6 +587,41 @@ footer { text-align: center; color: var(--dim); font-size: 0.75rem; margin-top: 
 """
 
 _JS = """
+const fogCanvas = document.getElementById('fogCanvas');
+if (fogCanvas) {
+  const fctx = fogCanvas.getContext('2d');
+  let FW = 0, FH = 0, motes = [];
+  const resizeFog = () => { FW = fogCanvas.width = innerWidth; FH = fogCanvas.height = innerHeight; };
+  const initFog = () => {
+    motes = Array.from({ length: 34 }, () => ({
+      x: Math.random() * FW, y: Math.random() * FH,
+      r: 40 + Math.random() * 90,
+      vx: (Math.random() - 0.5) * 0.25, vy: (Math.random() - 0.5) * 0.12,
+      a: 0.02 + Math.random() * 0.04,
+    }));
+  };
+  const drawFog = () => {
+    fctx.clearRect(0, 0, FW, FH);
+    for (const m of motes) {
+      m.x += m.vx; m.y += m.vy;
+      if (m.x < -m.r) m.x = FW + m.r; if (m.x > FW + m.r) m.x = -m.r;
+      if (m.y < -m.r) m.y = FH + m.r; if (m.y > FH + m.r) m.y = -m.r;
+      const g = fctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, m.r);
+      g.addColorStop(0, 'rgba(150,150,190,' + m.a + ')');
+      g.addColorStop(1, 'rgba(150,150,190,0)');
+      fctx.fillStyle = g;
+      fctx.beginPath(); fctx.arc(m.x, m.y, m.r, 0, 6.3); fctx.fill();
+    }
+    requestAnimationFrame(drawFog);
+  };
+  resizeFog(); initFog(); drawFog();
+  addEventListener('resize', () => { resizeFog(); initFog(); });
+}
+
+document.querySelectorAll('.candle').forEach(c => {
+  c.addEventListener('click', (e) => { e.stopPropagation(); c.classList.toggle('out'); });
+});
+
 document.querySelectorAll('.seance-btn').forEach(btn => {
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -874,6 +931,7 @@ def render(
 <style>{_CSS}</style>
 </head>
 <body>
+<canvas id="fogCanvas"></canvas>
 <div class="fog"></div>
 <div class="container">
   <header>
