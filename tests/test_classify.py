@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from graveyard.classify import classify
+from graveyard.eulogy import pick_last_laugh, validate_epitaph
 from graveyard.scan import scan_repo
 from tests.fixtures import RepoBuilder, spaced_commits
 
@@ -195,6 +196,16 @@ class ClassifierTests(unittest.TestCase):
         self.assertEqual(sum(sum(row) for row in grid), 10)
         # late-night commits should land in the 23:00 column
         self.assertEqual(sum(row[23] for row in grid), 10)
+
+    def test_last_laugh_is_verbatim(self):
+        b = RepoBuilder(self.root, "laugh")
+        spaced_commits(b, BASE, 6, step_days=4)
+        b.commit(BASE + timedelta(days=24), "it works on my machine", filename="a.py")
+        facts = scan_repo(self.root / "laugh")
+        laugh = pick_last_laugh(facts)
+        self.assertEqual(laugh, "it works on my machine")
+        self.assertTrue(validate_epitaph(laugh, facts))
+        self.assertFalse(validate_epitaph("a quote from nowhere", facts))
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ import json
 from datetime import datetime
 
 from .classify import Classification
+from .eulogy import pick_last_laugh, validate_epitaph
 from .scan import RepoFacts
 
 CAUSE_EMOJI = {
@@ -132,7 +133,11 @@ def _tombstone(idx: int, facts: RepoFacts, cls: Classification, eulogy: str, pla
     langs = ", ".join(facts.languages.keys()) or "—"
     cause_css = CAUSE_CSS.get(cls.cause, "cause-abandoned")
     emoji = CAUSE_EMOJI.get(cls.cause, "🪦")
-    epitaph_line = EPITAPHS.get(cls.cause, "It is gone now.")
+    laugh = pick_last_laugh(facts)
+    if laugh and validate_epitaph(laugh, facts):
+        epitaph_line = f"\u201c{laugh}\u201d"
+    else:
+        epitaph_line = EPITAPHS.get(cls.cause, "It is gone now.")
 
     diff_html = ""
     heatmap = _heatmap_html(facts)

@@ -328,3 +328,21 @@ def generate_cross_repo_eulogy(
         return eulogy, f"contained unverified numbers: {', '.join(bad)}", False
 
     return _fallback_cross(dead), "Ollama unavailable — used offline fallback.", True
+
+
+def pick_last_laugh(facts: RepoFacts) -> str | None:
+    """Pick a short, punchy, verbatim commit message to use as the project's last laugh."""
+    candidates = [m for m in facts.last_commits if m and len(m) <= 90]
+    if not candidates:
+        return None
+    if facts.last_commits and len(facts.last_commits[0]) <= 90:
+        return facts.last_commits[0]
+    return min(candidates, key=len)
+
+
+def validate_epitaph(quote: str, facts: RepoFacts) -> bool:
+    """Verbatim quote-checker: the epitaph must appear exactly in the project's commits."""
+    if not quote:
+        return False
+    target = " ".join(quote.split())
+    return any(" ".join(m.split()) == target for m in facts.last_commits)
