@@ -37,6 +37,8 @@ class RepoFacts:
     max_mid_gap_days: int = 0
     looks_finished: bool = False
     night_owl: bool = False
+    rewrite_trap: bool = False
+    dep_storm: bool = False
     error: str | None = None
 
     @property
@@ -124,6 +126,8 @@ class RepoFacts:
             "max_mid_gap_days": self.max_mid_gap_days,
             "looks_finished": self.looks_finished,
             "night_owl": self.night_owl,
+            "rewrite_trap": self.rewrite_trap,
+            "dep_storm": self.dep_storm,
             "error": self.error,
         }
 
@@ -318,6 +322,34 @@ def _is_night_owl(hours: list[int]) -> bool:
     return night / len(hours) > 0.4
 
 
+REWRITE_RE = re.compile(
+    r"\b(rewrite|re-?write|start over|from scratch|refactor everything|"
+    r"redo|second attempt|begin again|start again|rewrite everything)\b",
+    re.IGNORECASE,
+)
+
+DEP_RE = re.compile(
+    r"\b(bump|bumped|bumps|upgrade|upgraded|upgrades|dependenc(?:y|ies)|deps?|"
+    r"package\.json|lockfile|renovate|dependabot|npm|yarn|pnpm|pip install|version)\b",
+    re.IGNORECASE,
+)
+
+
+def _detect_rewrite(all_msgs: list[str]) -> bool:
+    """True when the project repeatedly talks about starting over."""
+    hits = sum(1 for m in all_msgs if REWRITE_RE.search(m))
+    return hits >= 2
+
+
+def _detect_dep_storm(last_msgs: list[str]) -> bool:
+    """True when the final commits are mostly dependency churn."""
+    if len(last_msgs) < 3:
+        return False
+    recent = last_msgs[:5]
+    hits = sum(1 for m in recent if DEP_RE.search(m))
+    return hits >= 3
+
+
 def _detect_dependency_growth(repo: Path) -> float:
     import json as _json
 
@@ -403,6 +435,11 @@ def scan_repo(repo_path: Path) -> RepoFacts:
         )
 
     facts.fix_loop = _detect_fix_loop(facts.last_commits)
+
+    if all_msgs:
+        all_msg_list = all_msgs.splitlines()
+        facts.rewrite_trap = _detect_rewrite(all_msg_list)
+    facts.dep_storm = _detect_dep_storm(facts.last_commits)
 
     facts.max_mid_gap_days = _max_mid_gap(facts.commit_dates)
 

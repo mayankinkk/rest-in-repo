@@ -19,6 +19,8 @@ CAUSES = {
     "scope_creep": "Scope-Creep Death",
     "weekend_hack": "Weekend Hack",
     "hackathon_orphan": "Hackathon Orphan",
+    "dependency_hell": "Dependency Hell",
+    "rewrite_trap": "Rewrite Trap",
     "abandoned": "General Abandonment",
 }
 
@@ -31,6 +33,8 @@ DEATH_CERT_NOTES = {
     "scope_creep": "Cause: Scope Creep. Eaten by its own ambition.",
     "weekend_hack": "Cause: Weekend Hack. Born on a Friday, gone by Monday.",
     "hackathon_orphan": "Cause: Hackathon Orphan. Built in a blaze, abandoned at the deadline.",
+    "dependency_hell": "Cause: Dependency Hell. Buried under its own packages.",
+    "rewrite_trap": "Cause: Rewrite Trap. Died restarting instead of finishing.",
     "abandoned": "Cause: General Abandonment. Quietly stopped being interesting.",
 }
 
@@ -177,6 +181,16 @@ def classify(facts: RepoFacts, dead_threshold: int = DEAD_THRESHOLD_DAYS) -> Cla
             f"{facts.file_count} files and {facts.dependency_growth:.0f} dependencies before death."
         )
         return _result("scope_creep", reasons, "medium")
+
+    if facts.dep_storm and days_dead >= dead_threshold:
+        reasons.append(
+            f"The last commits were dependency churn across ~{facts.dependency_growth:.0f} packages."
+        )
+        return _result("dependency_hell", reasons, "medium")
+
+    if facts.rewrite_trap and days_dead >= dead_threshold:
+        reasons.append("Kept rewriting from scratch instead of finishing.")
+        return _result("rewrite_trap", reasons, "medium")
 
     reasons.append(f"Quietly stopped {days_dead} days ago after {facts.commit_count} commits.")
     if facts.looks_finished:

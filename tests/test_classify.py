@@ -121,6 +121,31 @@ class ClassifierTests(unittest.TestCase):
         result = self._classify("slow-burst")
         self.assertNotEqual(result.cause, "hackathon_orphan")
 
+    def test_dependency_hell(self):
+        import json
+        b = RepoBuilder(self.root, "dephell")
+        deps = {f"pkg{i}": "^1.0.0" for i in range(20)}
+        b.write("package.json", json.dumps({"dependencies": deps}))
+        b.commit(BASE, "init", filename="package.json")
+        spaced_commits(b, BASE + timedelta(days=3), 4, step_days=3, filename="app.js")
+        for i in range(5):
+            b.commit(BASE + timedelta(days=15 + i * 3), f"bump dependency {i}", filename="package.json")
+        result = self._classify("dephell")
+        self.assertEqual(result.cause, "dependency_hell")
+        self.assertEqual(result.confidence, "medium")
+
+    def test_rewrite_trap(self):
+        b = RepoBuilder(self.root, "rewrite")
+        spaced_commits(b, BASE, 5, step_days=3)
+        b.commit(BASE + timedelta(days=15), "rewrite from scratch", filename="a.py")
+        b.commit(BASE + timedelta(days=18), "start over", filename="a.py")
+        b.commit(BASE + timedelta(days=21), "rewrite everything", filename="a.py")
+        b.commit(BASE + timedelta(days=24), "progress", filename="a.py")
+        b.commit(BASE + timedelta(days=27), "more", filename="a.py")
+        result = self._classify("rewrite")
+        self.assertEqual(result.cause, "rewrite_trap")
+        self.assertEqual(result.confidence, "medium")
+
     def test_almost_quit_gap_detected(self):
         b = RepoBuilder(self.root, "quitter")
         spaced_commits(b, BASE, 5, step_days=1)  # active first week

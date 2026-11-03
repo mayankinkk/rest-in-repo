@@ -19,6 +19,8 @@ CAUSE_EMOJI = {
     "scope_creep": "🌐",
     "weekend_hack": "🎉",
     "hackathon_orphan": "🏆",
+    "dependency_hell": "📦",
+    "rewrite_trap": "🔄",
     "abandoned": "🪦",
     "alive": "🌿",
 }
@@ -32,6 +34,8 @@ CAUSE_CSS = {
     "scope_creep": "cause-scope",
     "weekend_hack": "cause-weekend",
     "hackathon_orphan": "cause-hackathon",
+    "dependency_hell": "cause-dephell",
+    "rewrite_trap": "cause-rewrite",
     "abandoned": "cause-abandoned",
     "alive": "cause-alive",
 }
@@ -45,6 +49,8 @@ CAUSE_COLORS = {
     "scope_creep": "#fb7185",
     "weekend_hack": "#38bdf8",
     "hackathon_orphan": "#a3e635",
+    "dependency_hell": "#f59e0b",
+    "rewrite_trap": "#c084fc",
     "abandoned": "#9ca3af",
     "alive": "#4ade80",
 }
@@ -58,6 +64,8 @@ EPITAPHS = {
     "scope_creep": "Eaten by its own ambition.",
     "weekend_hack": "It was born on a Saturday and never came back to work.",
     "hackathon_orphan": "It shipped for the demo, then never again.",
+    "dependency_hell": "It drowned in its own dependencies.",
+    "rewrite_trap": "It kept starting over and never finished.",
     "abandoned": "It quietly stopped being interesting.",
 }
 
@@ -849,6 +857,8 @@ def render(
         "scope_creep": "Scope-Creep Death",
         "weekend_hack": "Weekend Hack",
         "hackathon_orphan": "Hackathon Orphan",
+        "dependency_hell": "Dependency Hell",
+        "rewrite_trap": "Rewrite Trap",
         "abandoned": "General Abandonment",
     }
 
