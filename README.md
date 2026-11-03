@@ -4,10 +4,12 @@ Point it at a folder of your old projects. It builds a spooky graveyard page whe
 
 **The code finds the facts. The model only writes the voice.**
 
+![Demo: intro stats, a séance with the commit heatmap, a resurrection plan, and the map view](docs/demo.gif)
+
 ## How it works
 
 1. **Scan** — walks a folder, finds every `.git` directory, and extracts facts with plain `git` commands (no AI): first/last commit dates, commit count, active days, last 5 commit messages, burst pattern, leftover TODO/FIXME count, README/tests/deploy presence, languages, size.
-2. **Classify** — deterministic rules assign a cause of death: Born Dead, Sudden Death, Slow Fade, Fix-Loop Death, Almost Shipped, Scope-Creep Death, or General Abandonment.
+2. **Classify** — deterministic rules assign a cause of death: Born Dead, Sudden Death, Slow Fade, Fix-Loop Death, Almost Shipped, Scope-Creep Death, Weekend Hack, Hackathon Orphan, Dependency Hell, Rewrite Trap, or General Abandonment.
 3. **Eulogy** — feeds the *facts* (never raw code) to a local model via Ollama with a strict prompt: funny or tender, max 3 sentences, use only these facts.
 4. **Validate** — a cheap check that the eulogy doesn't invent numbers or dates not in the facts. If it does, it regenerates.
 5. **Render** — one static HTML file. No backend, no network calls at view time.
@@ -59,6 +61,8 @@ This writes `graveyard.html` in the current directory. Open it in a browser.
 | `--no-ollama` | Skip Ollama; use offline fallback eulogies |
 | `--anonymize` | Start with anonymize mode on (hides names & messages) |
 | `--max-depth N` | How deep to search for repos (default `3`) |
+| `--resurrection` | Also generate a resurrection plan for each dead repo |
+| `--report PATH` | Also write a structured JSON report to this path |
 
 ### Examples
 
@@ -71,6 +75,9 @@ python ~/code -m qwen2.5:7b --tone gentle
 
 # Screenshot-ready: anonymize from the start, no AI calls
 python ~/code --anonymize --no-ollama
+
+# Resurrection plans on the page, plus a machine-readable JSON report
+python ~/code --resurrection --report report.json
 ```
 
 ## What you get
