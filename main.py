@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from graveyard.classify import DEAD_THRESHOLD_DAYS, classify
@@ -54,6 +56,10 @@ def main() -> int:
     parser.add_argument(
         "--resurrection", action="store_true",
         help="Also generate a resurrection plan for each dead repo",
+    )
+    parser.add_argument(
+        "--report", type=Path, default=None,
+        help="Also write a structured JSON report to this path",
     )
 
     args = parser.parse_args()
@@ -123,6 +129,27 @@ def main() -> int:
 
     html = render(results, alive, anonymize=args.anonymize, graveyard_eulogy=cross_eulogy)
     args.output.write_text(html, encoding="utf-8")
+
+    if args.report:
+        report = {
+            "generated_at": datetime.now().isoformat(),
+            "root": str(args.root),
+            "dead_threshold_days": args.threshold,
+            "total_dead": len(results),
+            "total_alive": len(alive),
+            "dead": [
+                {
+                    "facts": facts.to_dict(),
+                    "classification": cls.to_dict(),
+                    "eulogy": eulogy,
+                    "resurrection_plan": plan,
+                }
+                for facts, cls, eulogy, plan in results
+            ],
+            "alive": [f.to_dict() for f in alive],
+        }
+        args.report.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+        print(f"📋 JSON report written to {args.report.resolve()}")
 
     print(f"\n⚰️  Graveyard written to {args.output.resolve()}")
     print(f"   {len(results)} tombstones · {len(alive)} still breathing")
